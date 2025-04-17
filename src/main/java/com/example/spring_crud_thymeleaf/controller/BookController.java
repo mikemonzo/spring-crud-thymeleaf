@@ -1,15 +1,11 @@
 package com.example.spring_crud_thymeleaf.controller;
 
+import com.example.spring_crud_thymeleaf.model.Book;
+import com.example.spring_crud_thymeleaf.repository.BookRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import com.example.spring_crud_thymeleaf.model.Book;
-import com.example.spring_crud_thymeleaf.repository.BookRepository;
-
+import org.springframework.web.bind.annotation.*;
 
 @Controller
 public class BookController {
@@ -28,46 +24,50 @@ public class BookController {
         return "book-list";
     }
 
-    @GetMapping("/books/{id}")
+    @GetMapping("/books/view/{id}")
     public String findById(Model model, @PathVariable Long id) {
-        model.addAttribute("book", bookRepository.findById(id).orElse(null));
+        model.addAttribute("book", bookRepository.findById(id).get());
         return "book-view";
     }
 
-    @GetMapping("/books/new")
-    public String createForm(Model model) {
+    @GetMapping("/books/form")
+    public String getEmptyForm(Model model) {
         model.addAttribute("book", new Book());
         return "book-form";
     }
 
-    @GetMapping("/books/{id}/edit")
-    public String editForm(Model model, @PathVariable Long id) {
-        bookRepository.findById(id).ifPresentOrElse(book -> model.addAttribute("book", book),
-                () -> model.addAttribute("book", new Book()));
-        return "book-form";
+    @GetMapping("/books/edit/{id}")
+    public String getFormWithBook(Model model, @PathVariable Long id) {
+        if (bookRepository.existsById(id)) {
+            bookRepository.findById(id).ifPresent(b -> model.addAttribute("book", b));
+            return "book-form";
+        } else {
+            return "redirect:/books/form";
+        }
+
     }
 
     @PostMapping("/books")
     public String create(@ModelAttribute Book book) {
-        if (book.getId() == null) {
-            bookRepository.save(book);
-        } else {
-            bookRepository.findById(book.getId()).ifPresent(existingBook -> {
-                existingBook.setTitle(book.getTitle());
-                existingBook.setAuthor(book.getAuthor());
-                existingBook.setPrice(book.getPrice());
-                bookRepository.save(existingBook);
+        if (book.getId() != null) {
+            // actualización
+            bookRepository.findById(book.getId()).ifPresent(b -> {
+                b.setTitle(book.getTitle());
+                b.setAuthor(book.getAuthor());
+                b.setPrice(book.getPrice());
+                bookRepository.save(b);
             });
+        } else {
+            // creación
+            bookRepository.save(book);
         }
         return "redirect:/books";
     }
 
-    @GetMapping("/books/{id}/delete")
-    public String delete(@PathVariable Long id) {
-        if (bookRepository.existsById(id)) {
+    @GetMapping("/books/delete/{id}")
+    public String deleteById(@PathVariable Long id) {
+        if (bookRepository.existsById(id))
             bookRepository.deleteById(id);
-        }
         return "redirect:/books";
     }
-
 }
